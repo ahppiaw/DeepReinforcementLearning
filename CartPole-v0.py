@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Jul 18 09:34:34 2018
-about DeepQlearning
-@author: ahppiaw
-"""
-
 import numpy as np
 import tensorflow as tf
 import gym
