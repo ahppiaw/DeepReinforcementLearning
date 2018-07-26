@@ -1,21 +1,17 @@
 import numpy as np
 import tensorflow as tf
 import gym
-import random
-
+import rando
 class DeepQNetwork(object):
-    def __init__(self,n_actions,n_features,learning_rate=0.01,reward_decay=0.9,epsilon_greedy=0.9,epsilon_increment=0.001,replace_target_iter=300,buffer_size=500,batch_size=32):
+    def __init__(self,n_actions,n_features,epsilon_greedy=1.0,replace_target_iter=300,buffer_size=500,batch_size=32):
         self.n_actions = n_actions
         self.n_features = n_features
-        self.learning_rate = learning_rate
-        self.gamma = reward_decay
         self.replace_target_iter = replace_target_iter
         self.buffer_size = buffer_size
         self.buffer_counter = 0
         self.batch_size = batch_size
-        self.epsilon = 0 if epsilon_increment is not None else epsilon_greedy
+        self.epsilon = 0.1 if epsilon_increment is not None else epsilon_greedy
         self.epsilon_max = epsilon_greedy
-        self.epsilon_increment = epsilon_increment
         self.learn_step_counter = 0
         self.buffer = np.zeros((self.buffer_size,self.n_features*2+2))
         self.bulid_net()
@@ -41,14 +37,14 @@ class DeepQNetwork(object):
             target_layer = tf.layers.dense(self._s,20,tf.nn.relu,kernel_initializer=w_init,bias_initializer=b_init,name='target_layer')
             self.q_next = tf.layers.dense(target_layer,self.n_actions,kernel_initializer=w_init,bias_initializer=b_init,name='output_layer2')
         with tf.variable_scope("q_target"):
-            self.q_target = tf.stop_gradient(self.r + self.gamma*tf.reduce_max(self.q_next,axis=1))
+            self.q_target = tf.stop_gradient(self.r + GAMMA*tf.reduce_max(self.q_next,axis=1))
         with tf.variable_scope("q_eval"):
             a_indices = tf.stack([tf.range(tf.shape(self.a)[0]),self.a],axis=1)
             self.q_eval_a = tf.gather_nd(params=self.q_eval,indices=a_indices)
         with tf.variable_scope("loss"):
             self.loss = tf.reduce_mean(tf.squared_difference(self.q_target,self.q_eval_a))
         with tf.variable_scope("train"):
-            self.train_op = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.loss)
+            self.train_op = tf.train.RMSPropOptimizer(0.01).minimize(self.loss)
     def store_transition(self,s,a,r,_s):
         transition = np.hstack((s,a,r,_s))
         index = self.buffer_counter % self.buffer_size
@@ -68,7 +64,7 @@ class DeepQNetwork(object):
         sample_index = np.random.choice(min(self.buffer_counter,self.buffer_size),size = self.batch_size)
         batch_buffer = self.buffer[sample_index,:]
         _, cost = self.sess.run([self.train_op,self.loss],feed_dict={self.s : batch_buffer[:,:self.n_features],self.a : batch_buffer[:, self.n_features],self.r : batch_buffer[:,self.n_features+1],self._s : batch_buffer[:,-self.n_features:]})
-        self.epsilon = min(self.epsilon_max,self.epsilon+self.epsilon_increment)
+        self.epsilon = min(self.epsilon_max,self.epsilon+EPSILON_ADD)
         self.learn_step_counter+=1
         return cost
 
